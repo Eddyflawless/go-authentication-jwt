@@ -1,0 +1,51 @@
+
+services:
+
+  go-api:
+    container_name: go-api
+    build:
+      context: ./infrastructure/docker
+      dockerfile: go.dockerfile
+      args:
+        - ALPINE_VERSION=1.13-alpine2.11
+        - APP_ENV=local
+    ports: 
+      - "${GO_API_PORT}:${GO_API_PORT}"
+    environment:
+      PORT: ${GO_API_PORT}
+      MONGODB_URL: ${MONGODB_URL}
+    networks:
+      - medusa-network
+    profiles:
+      - "all"
+      - "api"
+    depends_on:
+      go-mongodb:
+        condition: service_healthy
+  go-mongodb:
+    container_name: go-mongodb
+    image: mongo:4.4.14-rc0
+    profiles:
+      - "all"
+      - "db"
+    volumes:
+      - medusa-data:/data/db
+    networks:
+      - medusa-network
+    ports:
+      - "27017:27017"  
+    environment:
+      MONGO_DATA_DIR: /data/db
+      MONGO_LOG_DIR: /dev/null
+    command: mongod --logpath=/dev/null   
+    healthcheck:
+      test: [ "CMD", "mongo", "--eval", "db.adminCommand('ping')" ]
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  medusa-data:     
+
+networks:
+  medusa-network:
